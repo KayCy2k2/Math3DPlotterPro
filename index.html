@@ -1,0 +1,4862 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Math 3D Plotter</title>
+
+
+  <!-- ========================================================= -->
+  <!-- TAILWIND - GIỮ NGUYÊN -->
+  <!-- ========================================================= -->
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  >
+
+
+  <!-- ========================================================= -->
+  <!-- GLOBAL STYLE -->
+  <!-- ========================================================= -->
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111827;
+    }
+
+    body {
+      position: relative;
+      user-select: none;
+    }
+
+
+    /* ========================================================= */
+    /* THREE.JS */
+    /* ========================================================= */
+
+    canvas {
+      pointer-events: auto !important;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+
+    /* ========================================================= */
+    /* APPLICATION ROOT */
+    /* ========================================================= */
+
+    #app {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none !important;
+      transition:
+        opacity .8s ease,
+        visibility .8s ease;
+      z-index: 1000;
+    }
+
+    #app.ready {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: none !important;
+    }
+
+    #app .badge {
+      pointer-events: auto;
+    }
+
+
+    /* ========================================================= */
+    /* LOADING SCREEN */
+    /* ========================================================= */
+
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 999999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+
+      background:
+        radial-gradient(
+          circle at 50% 40%,
+          rgba(30,64,175,.20),
+          transparent 30%
+        ),
+        radial-gradient(
+          circle at 50% 50%,
+          #111827 0%,
+          #030712 58%,
+          #000 100%
+        );
+
+      color: white;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+
+      transition:
+        opacity .9s ease,
+        visibility .9s ease;
+    }
+
+    #loadingScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none !important;
+    }
+
+    .loading-grid {
+      position: absolute;
+      inset: 0;
+      opacity: .13;
+
+      background-image:
+        linear-gradient(
+          rgba(96,165,250,.12) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(96,165,250,.12) 1px,
+          transparent 1px
+        );
+
+      background-size: 45px 45px;
+
+      transform:
+        perspective(500px)
+        rotateX(55deg)
+        scale(1.5);
+
+      transform-origin: center bottom;
+
+      animation:
+        loadingGridMove 12s linear infinite;
+
+      pointer-events: none;
+    }
+
+    @keyframes loadingGridMove {
+      from {
+        background-position: 0 0, 0 0;
+      }
+
+      to {
+        background-position: 0 45px, 45px 0;
+      }
+    }
+
+    .loading-orb {
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+
+      border:
+        1px solid
+        rgba(96,165,250,.08);
+
+      box-shadow:
+        0 0 80px rgba(37,99,235,.08),
+        inset 0 0 80px rgba(37,99,235,.05);
+
+      animation:
+        orbPulse 5s ease-in-out infinite;
+
+      pointer-events: none;
+    }
+
+    @keyframes orbPulse {
+
+      0%,
+      100% {
+        transform: scale(.92);
+        opacity: .4;
+      }
+
+      50% {
+        transform: scale(1.08);
+        opacity: .8;
+      }
+
+    }
+
+    .loading-container {
+      position: relative;
+      z-index: 5;
+      width: min(560px,90vw);
+      text-align: center;
+      padding: 42px;
+    }
+
+    .loading-logo {
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 28px;
+      position: relative;
+      transform-style: preserve-3d;
+      perspective: 700px;
+
+      animation:
+        logoRotate 7s linear infinite;
+    }
+
+    .loading-logo::before,
+    .loading-logo::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+
+      border: 2px solid #60a5fa;
+
+      box-shadow:
+        0 0 18px rgba(96,165,250,.5),
+        inset 0 0 18px rgba(96,165,250,.15);
+    }
+
+    .loading-logo::before {
+      transform:
+        rotateX(60deg)
+        rotateZ(45deg);
+    }
+
+    .loading-logo::after {
+      transform:
+        rotateY(60deg)
+        rotateZ(45deg);
+    }
+
+    .loading-logo-inner {
+      position: absolute;
+      inset: 15px;
+
+      border:
+        1px solid
+        rgba(147,197,253,.5);
+
+      transform:
+        rotateZ(45deg);
+
+      box-shadow:
+        0 0 25px
+        rgba(59,130,246,.3);
+    }
+
+    .loading-symbol {
+      position: absolute;
+      inset: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 48px;
+      font-weight: 800;
+
+      color: #dbeafe;
+
+      text-shadow:
+        0 0 10px #3b82f6,
+        0 0 25px #2563eb,
+        0 0 45px #1d4ed8;
+    }
+
+    @keyframes logoRotate {
+
+      0% {
+        transform:
+          rotateX(0deg)
+          rotateY(0deg)
+          rotateZ(0deg);
+      }
+
+      100% {
+        transform:
+          rotateX(360deg)
+          rotateY(360deg)
+          rotateZ(360deg);
+      }
+
+    }
+
+    .loading-title {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #f9fafb;
+
+      text-shadow:
+        0 0 10px rgba(96,165,250,.5),
+        0 0 30px rgba(37,99,235,.2);
+
+      margin-bottom: 9px;
+    }
+
+    .loading-subtitle {
+      font-size: 11px;
+      color: #94a3b8;
+      letter-spacing: 3px;
+      margin-bottom: 36px;
+    }
+
+    .progress-wrapper {
+      width: 100%;
+      height: 6px;
+
+      background:
+        rgba(255,255,255,.07);
+
+      border:
+        1px solid
+        rgba(255,255,255,.05);
+
+      border-radius: 999px;
+      overflow: hidden;
+
+      box-shadow:
+        inset 0 0 8px rgba(0,0,0,.8);
+    }
+
+    #loadingProgress {
+      width: 0%;
+      height: 100%;
+
+      border-radius: 999px;
+
+      background:
+        linear-gradient(
+          90deg,
+          #1d4ed8,
+          #3b82f6,
+          #60a5fa,
+          #38bdf8
+        );
+
+      box-shadow:
+        0 0 12px rgba(59,130,246,.9),
+        0 0 25px rgba(37,99,235,.5);
+
+      transition:
+        width .25s ease;
+    }
+
+    #loadingStatus {
+      margin-top: 16px;
+      min-height: 20px;
+
+      font-size: 12px;
+      color: #60a5fa;
+      letter-spacing: 1px;
+    }
+
+    #loadingStatus.error {
+      color: #f87171;
+    }
+
+    #loadingPercent {
+      margin-top: 7px;
+
+      font-size: 11px;
+      color: #64748b;
+
+      font-variant-numeric:
+        tabular-nums;
+    }
+
+    .loading-footer {
+      margin-top: 32px;
+
+      font-size: 10px;
+      color: #475569;
+
+      letter-spacing: 1.5px;
+    }
+
+    #loadingError {
+      display: none;
+
+      margin-top: 20px;
+      padding: 12px 14px;
+
+      border-radius: 8px;
+
+      background:
+        rgba(127,29,29,.25);
+
+      border:
+        1px solid
+        rgba(248,113,113,.25);
+
+      color: #fca5a5;
+
+      font-size: 11px;
+      line-height: 1.6;
+      text-align: left;
+    }
+
+    #loadingRetry {
+      display: none;
+
+      margin-top: 12px;
+      padding: 8px 16px;
+
+      border-radius: 7px;
+
+      border:
+        1px solid
+        rgba(96,165,250,.35);
+
+      background:
+        rgba(37,99,235,.18);
+
+      color: #bfdbfe;
+
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    #loadingRetry:hover {
+      background:
+        rgba(37,99,235,.35);
+
+      color: white;
+    }
+
+
+    /* ========================================================= */
+    /* ACCOUNT SYSTEM */
+    /* ========================================================= */
+
+    #authScreen {
+
+      position: fixed;
+      inset: 0;
+
+      z-index: 900000;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background:
+        radial-gradient(
+          circle at 20% 20%,
+          rgba(37,99,235,.18),
+          transparent 30%
+        ),
+        radial-gradient(
+          circle at 80% 80%,
+          rgba(14,165,233,.12),
+          transparent 30%
+        ),
+        rgba(2,6,23,.96);
+
+      backdrop-filter: blur(20px);
+
+      opacity: 0;
+      visibility: hidden;
+
+      pointer-events: none;
+
+      transition:
+        opacity .45s ease,
+        visibility .45s ease;
+    }
+
+    #authScreen.visible {
+
+      opacity: 1;
+      visibility: visible;
+
+      pointer-events: auto;
+    }
+
+    .auth-background-grid {
+
+      position: absolute;
+      inset: 0;
+
+      opacity: .12;
+
+      background-image:
+        linear-gradient(
+          rgba(96,165,250,.12) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(96,165,250,.12) 1px,
+          transparent 1px
+        );
+
+      background-size: 42px 42px;
+
+      transform:
+        perspective(700px)
+        rotateX(55deg)
+        scale(1.4);
+
+      transform-origin:
+        center bottom;
+
+      pointer-events: none;
+    }
+
+    .auth-card {
+
+      position: relative;
+
+      width: min(450px,94vw);
+
+      max-height:
+        calc(100vh - 40px);
+
+      overflow-y: auto;
+
+      padding: 30px;
+
+      border:
+        1px solid
+        rgba(96,165,250,.20);
+
+      border-radius: 22px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(15,23,42,.96),
+          rgba(2,6,23,.94)
+        );
+
+      box-shadow:
+        0 30px 100px rgba(0,0,0,.55),
+        0 0 60px rgba(37,99,235,.10),
+        inset 0 1px 0 rgba(255,255,255,.05);
+
+      backdrop-filter:
+        blur(25px);
+
+      z-index: 2;
+
+      animation:
+        authCardIn .45s ease;
+    }
+
+    @keyframes authCardIn {
+
+      from {
+        opacity: 0;
+        transform:
+          translateY(20px)
+          scale(.97);
+      }
+
+      to {
+        opacity: 1;
+        transform:
+          translateY(0)
+          scale(1);
+      }
+
+    }
+
+    .auth-logo {
+
+      width: 68px;
+      height: 68px;
+
+      margin:
+        0 auto 18px;
+
+      border:
+        1px solid
+        rgba(96,165,250,.5);
+
+      border-radius: 18px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 32px;
+      font-weight: 900;
+
+      color: #dbeafe;
+
+      background:
+        rgba(37,99,235,.10);
+
+      box-shadow:
+        0 0 35px rgba(37,99,235,.25),
+        inset 0 0 25px rgba(59,130,246,.08);
+
+      transform:
+        rotate(45deg);
+    }
+
+    .auth-logo span {
+      transform:
+        rotate(-45deg);
+    }
+
+    .auth-title {
+
+      text-align: center;
+
+      color: white;
+
+      font-size: 25px;
+      font-weight: 800;
+
+      letter-spacing: 2px;
+    }
+
+    .auth-subtitle {
+
+      text-align: center;
+
+      margin-top: 6px;
+      margin-bottom: 25px;
+
+      color: #64748b;
+
+      font-size: 10px;
+
+      letter-spacing: 2px;
+    }
+
+    .auth-tabs {
+
+      display: grid;
+
+      grid-template-columns:
+        1fr 1fr;
+
+      gap: 6px;
+
+      padding: 5px;
+
+      margin-bottom: 22px;
+
+      background:
+        rgba(15,23,42,.8);
+
+      border:
+        1px solid
+        rgba(255,255,255,.05);
+
+      border-radius: 11px;
+    }
+
+    .auth-tab {
+
+      border: 0;
+
+      padding: 10px;
+
+      border-radius: 8px;
+
+      background: transparent;
+
+      color: #64748b;
+
+      cursor: pointer;
+
+      font-size: 12px;
+
+      transition: .2s ease;
+    }
+
+    .auth-tab:hover {
+      color: #dbeafe;
+    }
+
+    .auth-tab.active {
+
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(37,99,235,.8),
+          rgba(14,116,144,.7)
+        );
+
+      box-shadow:
+        0 5px 18px
+        rgba(37,99,235,.2);
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+      animation:
+        authFade .25s ease;
+    }
+
+    @keyframes authFade {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .auth-field {
+      margin-bottom: 14px;
+    }
+
+    .auth-label {
+
+      display: block;
+
+      margin-bottom: 6px;
+
+      color: #94a3b8;
+
+      font-size: 10px;
+
+      letter-spacing: 1px;
+    }
+
+    .auth-input-wrap {
+      position: relative;
+    }
+
+    .auth-input {
+
+      width: 100%;
+
+      height: 44px;
+
+      padding:
+        0 42px 0 14px;
+
+      outline: none;
+
+      border:
+        1px solid
+        rgba(148,163,184,.16);
+
+      border-radius: 10px;
+
+      background:
+        rgba(15,23,42,.8);
+
+      color: white;
+
+      font-size: 13px;
+
+      transition:
+        border .2s ease,
+        box-shadow .2s ease,
+        background .2s ease;
+    }
+
+    .auth-input::placeholder {
+      color: #475569;
+    }
+
+    .auth-input:focus {
+
+      border-color:
+        rgba(96,165,250,.65);
+
+      background:
+        rgba(15,23,42,.95);
+
+      box-shadow:
+        0 0 0 3px
+        rgba(59,130,246,.10);
+    }
+
+    .password-toggle {
+
+      position: absolute;
+
+      right: 9px;
+      top: 50%;
+
+      transform:
+        translateY(-50%);
+
+      border: 0;
+
+      background: transparent;
+
+      color: #64748b;
+
+      cursor: pointer;
+
+      font-size: 15px;
+    }
+
+    .password-toggle:hover {
+      color: #bfdbfe;
+    }
+
+    .auth-submit {
+
+      width: 100%;
+
+      height: 45px;
+
+      margin-top: 8px;
+
+      border: 0;
+
+      border-radius: 10px;
+
+      cursor: pointer;
+
+      color: white;
+
+      font-weight: 700;
+
+      font-size: 12px;
+
+      letter-spacing: .7px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #2563eb,
+          #0891b2
+        );
+
+      box-shadow:
+        0 8px 25px
+        rgba(37,99,235,.20);
+
+      transition:
+        transform .2s ease,
+        box-shadow .2s ease;
+    }
+
+    .auth-submit:hover {
+
+      transform:
+        translateY(-1px);
+
+      box-shadow:
+        0 12px 32px
+        rgba(37,99,235,.30);
+    }
+
+    .auth-submit:active {
+      transform:
+        translateY(0);
+    }
+
+    .auth-message {
+
+      display: none;
+
+      margin-bottom: 13px;
+
+      padding: 10px 12px;
+
+      border-radius: 9px;
+
+      font-size: 11px;
+
+      line-height: 1.5;
+    }
+
+    .auth-message.error {
+
+      display: block;
+
+      color: #fecaca;
+
+      background:
+        rgba(127,29,29,.25);
+
+      border:
+        1px solid
+        rgba(248,113,113,.20);
+    }
+
+    .auth-message.success {
+
+      display: block;
+
+      color: #bbf7d0;
+
+      background:
+        rgba(20,83,45,.22);
+
+      border:
+        1px solid
+        rgba(74,222,128,.18);
+    }
+
+    .auth-divider {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      margin:
+        20px 0 15px;
+
+      color: #475569;
+
+      font-size: 9px;
+
+      letter-spacing: 1px;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+
+      content: "";
+
+      flex: 1;
+
+      height: 1px;
+
+      background:
+        rgba(148,163,184,.10);
+    }
+
+    .guest-button {
+
+      width: 100%;
+
+      height: 42px;
+
+      border:
+        1px solid
+        rgba(148,163,184,.15);
+
+      border-radius: 10px;
+
+      background:
+        rgba(15,23,42,.5);
+
+      color: #94a3b8;
+
+      cursor: pointer;
+
+      font-size: 11px;
+
+      transition: .2s ease;
+    }
+
+    .guest-button:hover {
+
+      color: white;
+
+      border-color:
+        rgba(96,165,250,.35);
+
+      background:
+        rgba(30,41,59,.8);
+    }
+
+    .auth-footer {
+
+      margin-top: 20px;
+
+      text-align: center;
+
+      color: #475569;
+
+      font-size: 9px;
+
+      line-height: 1.6;
+    }
+
+    .auth-security {
+
+      margin-top: 12px;
+
+      padding: 9px 10px;
+
+      border-radius: 8px;
+
+      color: #64748b;
+
+      background:
+        rgba(2,6,23,.5);
+
+      border:
+        1px solid
+        rgba(255,255,255,.04);
+
+      font-size: 9px;
+
+      line-height: 1.5;
+    }
+
+
+    /* ========================================================= */
+    /* USER PANEL */
+    /* ========================================================= */
+
+    #accountButton {
+
+      position: fixed;
+
+      right: 14px;
+      top: 14px;
+
+      z-index: 5000;
+
+      display: none;
+
+      align-items: center;
+
+      gap: 9px;
+
+      padding:
+        7px 11px 7px 7px;
+
+      border:
+        1px solid
+        rgba(96,165,250,.22);
+
+      border-radius: 12px;
+
+      background:
+        rgba(15,23,42,.82);
+
+      backdrop-filter:
+        blur(12px);
+
+      color: white;
+
+      cursor: pointer;
+
+      box-shadow:
+        0 8px 30px rgba(0,0,0,.25);
+
+      pointer-events: auto;
+    }
+
+    #accountButton.visible {
+      display: flex;
+    }
+
+    .account-avatar {
+
+      width: 30px;
+      height: 30px;
+
+      border-radius: 9px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      background:
+        linear-gradient(
+          135deg,
+          #2563eb,
+          #0891b2
+        );
+
+      color: white;
+
+      font-weight: 800;
+
+      font-size: 12px;
+    }
+
+    .account-name {
+
+      max-width: 140px;
+
+      overflow: hidden;
+
+      text-overflow: ellipsis;
+
+      white-space: nowrap;
+
+      font-size: 11px;
+    }
+
+    .account-status {
+
+      font-size: 8px;
+
+      color: #4ade80;
+
+      margin-top: 1px;
+    }
+
+    #accountMenu {
+
+      position: fixed;
+
+      top: 58px;
+      right: 14px;
+
+      z-index: 5001;
+
+      width: 230px;
+
+      display: none;
+
+      padding: 8px;
+
+      border:
+        1px solid
+        rgba(96,165,250,.18);
+
+      border-radius: 14px;
+
+      background:
+        rgba(15,23,42,.96);
+
+      backdrop-filter:
+        blur(20px);
+
+      box-shadow:
+        0 20px 50px
+        rgba(0,0,0,.45);
+
+      pointer-events: auto;
+    }
+
+    #accountMenu.open {
+      display: block;
+      animation:
+        accountMenuIn .18s ease;
+    }
+
+    @keyframes accountMenuIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .account-menu-header {
+
+      padding:
+        12px;
+
+      border-bottom:
+        1px solid
+        rgba(255,255,255,.06);
+
+      margin-bottom: 5px;
+    }
+
+    .account-menu-email {
+
+      color: #64748b;
+
+      font-size: 9px;
+
+      margin-top: 3px;
+    }
+
+    .account-menu-item {
+
+      width: 100%;
+
+      padding:
+        10px 11px;
+
+      border: 0;
+
+      border-radius: 8px;
+
+      background: transparent;
+
+      color: #cbd5e1;
+
+      text-align: left;
+
+      cursor: pointer;
+
+      font-size: 11px;
+    }
+
+    .account-menu-item:hover {
+
+      background:
+        rgba(59,130,246,.12);
+
+      color: white;
+    }
+
+    .account-menu-item.danger:hover {
+
+      background:
+        rgba(239,68,68,.10);
+
+      color: #fca5a5;
+    }
+
+
+    /* ========================================================= */
+    /* MODAL */
+    /* ========================================================= */
+
+    .account-modal {
+
+      position: fixed;
+
+      inset: 0;
+
+      z-index: 6000;
+
+      display: none;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background:
+        rgba(2,6,23,.70);
+
+      backdrop-filter:
+        blur(10px);
+
+      pointer-events: auto;
+    }
+
+    .account-modal.open {
+      display: flex;
+    }
+
+    .account-modal-card {
+
+      width:
+        min(430px,94vw);
+
+      padding: 24px;
+
+      border:
+        1px solid
+        rgba(96,165,250,.20);
+
+      border-radius: 18px;
+
+      background:
+        #0f172a;
+
+      box-shadow:
+        0 30px 100px
+        rgba(0,0,0,.55);
+    }
+
+    .modal-title {
+
+      color: white;
+
+      font-size: 18px;
+
+      font-weight: 800;
+    }
+
+    .modal-close {
+
+      border: 0;
+
+      background: transparent;
+
+      color: #64748b;
+
+      cursor: pointer;
+
+      font-size: 20px;
+    }
+
+    .modal-close:hover {
+      color: white;
+    }
+
+    .modal-info {
+
+      margin:
+        16px 0;
+
+      padding: 12px;
+
+      border-radius: 10px;
+
+      background:
+        rgba(30,41,59,.7);
+
+      border:
+        1px solid
+        rgba(255,255,255,.05);
+
+      color: #94a3b8;
+
+      font-size: 11px;
+
+      line-height: 1.6;
+    }
+
+    .modal-label {
+
+      display: block;
+
+      margin-bottom: 6px;
+
+      color: #64748b;
+
+      font-size: 10px;
+    }
+
+    .modal-input {
+
+      width: 100%;
+
+      height: 40px;
+
+      margin-bottom: 13px;
+
+      padding:
+        0 12px;
+
+      outline: none;
+
+      border:
+        1px solid
+        rgba(148,163,184,.14);
+
+      border-radius: 9px;
+
+      background:
+        rgba(2,6,23,.7);
+
+      color: white;
+    }
+
+    .modal-input:focus {
+
+      border-color:
+        rgba(96,165,250,.55);
+    }
+
+    .modal-actions {
+
+      display: flex;
+
+      gap: 8px;
+
+      justify-content: flex-end;
+    }
+
+    .modal-button {
+
+      padding:
+        9px 15px;
+
+      border-radius: 8px;
+
+      border:
+        1px solid
+        rgba(148,163,184,.15);
+
+      background:
+        rgba(30,41,59,.8);
+
+      color: #cbd5e1;
+
+      cursor: pointer;
+
+      font-size: 11px;
+    }
+
+    .modal-button.primary {
+
+      border: 0;
+
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          #2563eb,
+          #0891b2
+        );
+    }
+
+
+    /* ========================================================= */
+    /* BADGE */
+    /* ========================================================= */
+
+    .badge {
+
+      position: fixed;
+
+      left: 12px;
+      bottom: 12px;
+
+      padding: 6px;
+
+      background: white;
+
+      color: #111827;
+
+      border:
+        1px solid white;
+
+      backdrop-filter:
+        blur(8px);
+
+      border-radius: 10px;
+
+      font-size: 10px;
+
+      z-index: 1000;
+
+      pointer-events: auto;
+    }
+
+
+    /* ========================================================= */
+    /* DAT.GUI */
+    /* ========================================================= */
+
+    .dg {
+      pointer-events: auto !important;
+    }
+
+    .dg.ac {
+      z-index: 999999 !important;
+      pointer-events: auto !important;
+    }
+
+
+    /* ========================================================= */
+    /* CSS2D */
+    /* ========================================================= */
+
+    .css2d-renderer,
+    .CSS2DRenderer {
+      pointer-events: none !important;
+    }
+
+
+    /* ========================================================= */
+    /* INPUTS */
+    /* ========================================================= */
+
+    button,
+    input,
+    select,
+    textarea,
+    .dg,
+    .dg * {
+      pointer-events: auto;
+    }
+
+  </style>
+
+
+  <!-- ========================================================= -->
+  <!-- MODULES - GIỮ NGUYÊN 100% URL BẢN GỐC -->
+  <!-- ========================================================= -->
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"
+  ></script>
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.0/dist/chartjs-chart-matrix.min.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.min.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+  ></script>
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"
+  ></script>
+
+</head>
+
+
+<body>
+
+
+  <!-- ======================================================= -->
+  <!-- LOADING SCREEN -->
+  <!-- ======================================================= -->
+
+  <div id="loadingScreen">
+
+    <div class="loading-grid"></div>
+
+    <div class="loading-orb"></div>
+
+    <div class="loading-container">
+
+      <div class="loading-logo">
+
+        <div class="loading-logo-inner"></div>
+
+        <div class="loading-symbol">
+          ∑
+        </div>
+
+      </div>
+
+      <div class="loading-title">
+        MATH 3D PLOTTER
+      </div>
+
+      <div class="loading-subtitle">
+        MATHEMATICAL VISUALIZATION ENGINE
+      </div>
+
+      <div class="progress-wrapper">
+
+        <div id="loadingProgress"></div>
+
+      </div>
+
+      <div id="loadingStatus">
+        Starting application...
+      </div>
+
+      <div id="loadingPercent">
+        0%
+      </div>
+
+      <div id="loadingError"></div>
+
+      <button
+        id="loadingRetry"
+        type="button"
+      >
+        ↻ Thử lại
+      </button>
+
+      <div class="loading-footer">
+        Math 3D Plotter by KayCy
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ======================================================= -->
+  <!-- ACCOUNT LOGIN / REGISTER -->
+  <!-- ======================================================= -->
+
+  <div id="authScreen">
+
+    <div class="auth-background-grid"></div>
+
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        <span>∑</span>
+      </div>
+
+      <div class="auth-title">
+        MATH 3D PLOTTER
+      </div>
+
+      <div class="auth-subtitle">
+        MATHEMATICAL VISUALIZATION ENGINE
+      </div>
+
+
+      <div class="auth-tabs">
+
+        <button
+          type="button"
+          id="loginTab"
+          class="auth-tab active"
+        >
+          🔐 Đăng nhập
+        </button>
+
+        <button
+          type="button"
+          id="registerTab"
+          class="auth-tab"
+        >
+          📝 Tạo tài khoản
+        </button>
+
+      </div>
+
+
+      <div
+        id="authMessage"
+        class="auth-message"
+      ></div>
+
+
+      <!-- LOGIN -->
+
+      <form
+        id="loginForm"
+        class="auth-form active"
+        autocomplete="on"
+      >
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            EMAIL / TÊN ĐĂNG NHẬP
+          </label>
+
+          <input
+            id="loginUsername"
+            class="auth-input"
+            type="text"
+            autocomplete="username"
+            placeholder="Nhập email hoặc username"
+            required
+          >
+
+        </div>
+
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            MẬT KHẨU
+          </label>
+
+          <div class="auth-input-wrap">
+
+            <input
+              id="loginPassword"
+              class="auth-input"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Nhập mật khẩu"
+              required
+            >
+
+            <button
+              type="button"
+              class="password-toggle"
+              data-target="loginPassword"
+            >
+              👁
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <button
+          type="submit"
+          class="auth-submit"
+        >
+          ĐĂNG NHẬP
+        </button>
+
+      </form>
+
+
+      <!-- REGISTER -->
+
+      <form
+        id="registerForm"
+        class="auth-form"
+        autocomplete="on"
+      >
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            TÊN HIỂN THỊ
+          </label>
+
+          <input
+            id="registerName"
+            class="auth-input"
+            type="text"
+            autocomplete="name"
+            placeholder="Ví dụ: Nguyễn Văn A"
+            required
+          >
+
+        </div>
+
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            USERNAME
+          </label>
+
+          <input
+            id="registerUsername"
+            class="auth-input"
+            type="text"
+            autocomplete="username"
+            placeholder="mathstudent"
+            required
+          >
+
+        </div>
+
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            EMAIL
+          </label>
+
+          <input
+            id="registerEmail"
+            class="auth-input"
+            type="email"
+            autocomplete="email"
+            placeholder="example@email.com"
+            required
+          >
+
+        </div>
+
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            MẬT KHẨU
+          </label>
+
+          <div class="auth-input-wrap">
+
+            <input
+              id="registerPassword"
+              class="auth-input"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Ít nhất 6 ký tự"
+              required
+            >
+
+            <button
+              type="button"
+              class="password-toggle"
+              data-target="registerPassword"
+            >
+              👁
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="auth-field">
+
+          <label class="auth-label">
+            XÁC NHẬN MẬT KHẨU
+          </label>
+
+          <div class="auth-input-wrap">
+
+            <input
+              id="registerPassword2"
+              class="auth-input"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Nhập lại mật khẩu"
+              required
+            >
+
+            <button
+              type="button"
+              class="password-toggle"
+              data-target="registerPassword2"
+            >
+              👁
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <button
+          type="submit"
+          class="auth-submit"
+        >
+          TẠO TÀI KHOẢN
+        </button>
+
+      </form>
+
+
+      <div class="auth-divider">
+        HOẶC
+      </div>
+
+
+      <button
+        id="guestButton"
+        type="button"
+        class="guest-button"
+      >
+        👤 Tiếp tục với tư cách khách
+      </button>
+
+
+      <div class="auth-security">
+
+        🔒 <strong>Local Account Mode</strong><br>
+
+        Tài khoản của phiên bản này được lưu
+        trên trình duyệt hiện tại bằng
+        <code>localStorage</code>.
+        Đây là chế độ demo/local, không phải
+        hệ thống tài khoản máy chủ.
+
+      </div>
+
+
+      <div class="auth-footer">
+        Math 3D Plotter by KayCy<br>
+        Mathematical Visualization Engine
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ======================================================= -->
+  <!-- APPLICATION ROOT -->
+  <!-- ======================================================= -->
+
+  <div id="app">
+
+    <div class="badge">
+      Math 3D Plotter by KayCy
+    </div>
+
+  </div>
+
+
+  <!-- ======================================================= -->
+  <!-- ACCOUNT BUTTON -->
+  <!-- ======================================================= -->
+
+  <button
+    id="accountButton"
+    type="button"
+    aria-label="Account"
+  >
+
+    <div
+      id="accountAvatar"
+      class="account-avatar"
+    >
+      U
+    </div>
+
+    <div>
+
+      <div
+        id="accountName"
+        class="account-name"
+      >
+        User
+      </div>
+
+      <div class="account-status">
+        ● ONLINE
+      </div>
+
+    </div>
+
+    <span>
+      ▾
+    </span>
+
+  </button>
+
+
+  <!-- ======================================================= -->
+  <!-- ACCOUNT MENU -->
+  <!-- ======================================================= -->
+
+  <div id="accountMenu">
+
+    <div class="account-menu-header">
+
+      <div
+        id="menuUserName"
+        style="
+          color:white;
+          font-size:12px;
+          font-weight:700;
+        "
+      >
+        User
+      </div>
+
+      <div
+        id="menuUserEmail"
+        class="account-menu-email"
+      >
+        user@example.com
+      </div>
+
+    </div>
+
+
+    <button
+      class="account-menu-item"
+      id="profileButton"
+      type="button"
+    >
+      👤 Hồ sơ tài khoản
+    </button>
+
+
+    <button
+      class="account-menu-item"
+      id="passwordButton"
+      type="button"
+    >
+      🔑 Đổi mật khẩu
+    </button>
+
+
+    <button
+      class="account-menu-item"
+      id="projectsButton"
+      type="button"
+    >
+      📐 My Math Projects
+    </button>
+
+
+    <button
+      class="account-menu-item"
+      id="settingsButton"
+      type="button"
+    >
+      ⚙️ Account Settings
+    </button>
+
+
+    <button
+      class="account-menu-item danger"
+      id="logoutButton"
+      type="button"
+    >
+      🚪 Đăng xuất
+    </button>
+
+  </div>
+
+
+  <!-- ======================================================= -->
+  <!-- PROFILE MODAL -->
+  <!-- ======================================================= -->
+
+  <div id="accountLayer">
+
+    <!-- ======================================================= -->
+    <!-- PROFILE MODAL -->
+    <!-- ======================================================= -->
+  
+    <div
+      id="profileModal"
+      class="account-modal"
+    >
+  
+      <div class="account-modal-card">
+  
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+          "
+        >
+  
+          <div class="modal-title">
+            👤 Hồ sơ tài khoản
+          </div>
+  
+          <button
+            class="modal-close"
+            data-close-modal="profileModal"
+            type="button"
+          >
+            ×
+          </button>
+  
+        </div>
+  
+        <div class="modal-info">
+  
+          <strong
+            id="profileName"
+            style="color:white;"
+          >
+            User
+          </strong>
+  
+          <br>
+  
+          <span id="profileUsername">
+            @username
+          </span>
+  
+          <br>
+  
+          <span id="profileEmail">
+            email@example.com
+          </span>
+  
+          <br><br>
+  
+          Thành viên từ:
+          <span id="profileCreated">
+            -
+          </span>
+  
+          <br>
+  
+          Đăng nhập cuối:
+          <span id="profileLastLogin">
+            -
+          </span>
+  
+        </div>
+  
+        <div class="modal-actions">
+  
+          <button
+            class="modal-button"
+            data-close-modal="profileModal"
+            type="button"
+          >
+            Đóng
+          </button>
+  
+        </div>
+  
+      </div>
+  
+    </div>
+  
+  
+    <!-- ======================================================= -->
+    <!-- CHANGE PASSWORD MODAL -->
+    <!-- ======================================================= -->
+  
+    <div
+      id="passwordModal"
+      class="account-modal"
+    >
+  
+      <div class="account-modal-card">
+  
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+          "
+        >
+  
+          <div class="modal-title">
+            🔑 Đổi mật khẩu
+          </div>
+  
+          <button
+            class="modal-close"
+            data-close-modal="passwordModal"
+            type="button"
+          >
+            ×
+          </button>
+  
+        </div>
+  
+        <div
+          id="passwordMessage"
+          class="auth-message"
+        ></div>
+  
+        <form id="changePasswordForm">
+  
+          <label class="modal-label">
+            MẬT KHẨU HIỆN TẠI
+          </label>
+  
+          <input
+            id="oldPassword"
+            class="modal-input"
+            type="password"
+            required
+          >
+  
+          <label class="modal-label">
+            MẬT KHẨU MỚI
+          </label>
+  
+          <input
+            id="newPassword"
+            class="modal-input"
+            type="password"
+            minlength="6"
+            required
+          >
+  
+          <label class="modal-label">
+            XÁC NHẬN MẬT KHẨU MỚI
+          </label>
+  
+          <input
+            id="newPassword2"
+            class="modal-input"
+            type="password"
+            minlength="6"
+            required
+          >
+  
+          <div class="modal-actions">
+  
+            <button
+              class="modal-button"
+              data-close-modal="passwordModal"
+              type="button"
+            >
+              Hủy
+            </button>
+  
+            <button
+              class="modal-button primary"
+              type="submit"
+            >
+              Cập nhật
+            </button>
+  
+          </div>
+  
+        </form>
+  
+      </div>
+  
+    </div>
+  
+  </div>
+
+
+  <!-- ======================================================= -->
+  <!-- GUIHELPER -->
+  <!-- ======================================================= -->
+
+  <!--<script src="GuiHelper.js"></script>-->
+
+
+  <!-- ======================================================= -->
+  <!-- SCRIPT.JS -->
+  <!-- ======================================================= -->
+
+ <!-- <script
+    type="module"
+    src="script.js"
+  ></script>-->
+
+ <script type="module" src="https://kaycy2k2.github.io/Math3DPlotterPro/script.js"></script>
+  <script src="https://kaycy2k2.github.io/Math3DPlotterPro/GuiHelper.js"></script> 
+  <!-- ======================================================= -->
+  <!-- ACCOUNT MANAGER -->
+  <!-- ======================================================= -->
+
+  <script>
+
+  (() => {
+
+    "use strict";
+
+
+    /* ======================================================= */
+    /* STORAGE */
+    /* ======================================================= */
+
+    const USERS_KEY =
+      "math3d_users_v1";
+
+    const SESSION_KEY =
+      "math3d_session_v1";
+
+
+    /* ======================================================= */
+    /* DOM */
+    /* ======================================================= */
+
+    const authScreen =
+      document.getElementById(
+        "authScreen"
+      );
+
+    const loginTab =
+      document.getElementById(
+        "loginTab"
+      );
+
+    const registerTab =
+      document.getElementById(
+        "registerTab"
+      );
+
+    const loginForm =
+      document.getElementById(
+        "loginForm"
+      );
+
+    const registerForm =
+      document.getElementById(
+        "registerForm"
+      );
+
+    const authMessage =
+      document.getElementById(
+        "authMessage"
+      );
+
+    const guestButton =
+      document.getElementById(
+        "guestButton"
+      );
+
+    const accountButton =
+      document.getElementById(
+        "accountButton"
+      );
+
+    const accountMenu =
+      document.getElementById(
+        "accountMenu"
+      );
+
+    const accountName =
+      document.getElementById(
+        "accountName"
+      );
+
+    const accountAvatar =
+      document.getElementById(
+        "accountAvatar"
+      );
+
+    const menuUserName =
+      document.getElementById(
+        "menuUserName"
+      );
+
+    const menuUserEmail =
+      document.getElementById(
+        "menuUserEmail"
+      );
+
+
+    /* ======================================================= */
+    /* STORAGE FUNCTIONS */
+    /* ======================================================= */
+
+    function getUsers() {
+
+      try {
+
+        return JSON.parse(
+          localStorage.getItem(
+            USERS_KEY
+          ) || "[]"
+        );
+
+      }
+      catch {
+
+        return [];
+
+      }
+
+    }
+
+
+    function saveUsers(users) {
+
+      localStorage.setItem(
+        USERS_KEY,
+        JSON.stringify(users)
+      );
+
+    }
+
+
+    function getSession() {
+
+      try {
+
+        return JSON.parse(
+          localStorage.getItem(
+            SESSION_KEY
+          ) || "null"
+        );
+
+      }
+      catch {
+
+        return null;
+
+      }
+
+    }
+
+
+    function saveSession(session) {
+
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify(session)
+      );
+
+    }
+
+
+    function clearSession() {
+
+      localStorage.removeItem(
+        SESSION_KEY
+      );
+
+    }
+
+
+    /* ======================================================= */
+    /* UTILITY */
+    /* ======================================================= */
+
+    function normalizeUsername(value) {
+
+      return String(value || "")
+        .trim()
+        .toLowerCase();
+
+    }
+
+
+    function normalizeEmail(value) {
+
+      return String(value || "")
+        .trim()
+        .toLowerCase();
+
+    }
+
+
+    function escapeText(value) {
+
+      return String(value || "");
+
+    }
+
+
+    function getInitial(name) {
+
+      const text =
+        String(name || "U")
+          .trim();
+
+      return (
+        text.charAt(0) ||
+        "U"
+      ).toUpperCase();
+
+    }
+
+
+    function nowText() {
+
+      return new Date()
+        .toLocaleString(
+          "vi-VN"
+        );
+
+    }
+
+
+    /* ======================================================= */
+    /* MESSAGE */
+    /* ======================================================= */
+
+    function showMessage(
+      message,
+      type = "error"
+    ) {
+
+      if (!authMessage) {
+        return;
+      }
+
+      authMessage.textContent =
+        message;
+
+      authMessage.className =
+        "auth-message " +
+        type;
+
+    }
+
+
+    function clearMessage() {
+
+      if (!authMessage) {
+        return;
+      }
+
+      authMessage.textContent =
+        "";
+
+      authMessage.className =
+        "auth-message";
+
+    }
+
+
+    /* ======================================================= */
+    /* SWITCH FORM */
+    /* ======================================================= */
+
+    function showLogin() {
+
+      loginTab.classList.add(
+        "active"
+      );
+
+      registerTab.classList.remove(
+        "active"
+      );
+
+      loginForm.classList.add(
+        "active"
+      );
+
+      registerForm.classList.remove(
+        "active"
+      );
+
+      clearMessage();
+
+    }
+
+
+    function showRegister() {
+
+      registerTab.classList.add(
+        "active"
+      );
+
+      loginTab.classList.remove(
+        "active"
+      );
+
+      registerForm.classList.add(
+        "active"
+      );
+
+      loginForm.classList.remove(
+        "active"
+      );
+
+      clearMessage();
+
+    }
+
+
+    loginTab.addEventListener(
+      "click",
+      showLogin
+    );
+
+    registerTab.addEventListener(
+      "click",
+      showRegister
+    );
+
+
+    /* ======================================================= */
+    /* PASSWORD VISIBILITY */
+    /* ======================================================= */
+
+    document
+      .querySelectorAll(
+        ".password-toggle"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              const target =
+                document.getElementById(
+                  button.dataset.target
+                );
+
+              if (!target) {
+                return;
+              }
+
+              if (
+                target.type ===
+                "password"
+              ) {
+
+                target.type =
+                  "text";
+
+                button.textContent =
+                  "🙈";
+
+              }
+              else {
+
+                target.type =
+                  "password";
+
+                button.textContent =
+                  "👁";
+
+              }
+
+            }
+          );
+
+        }
+      );
+
+
+    /* ======================================================= */
+    /* REGISTER */
+    /* ======================================================= */
+
+    registerForm.addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+        clearMessage();
+
+
+        const name =
+          document
+            .getElementById(
+              "registerName"
+            )
+            .value
+            .trim();
+
+
+        const username =
+          normalizeUsername(
+            document
+              .getElementById(
+                "registerUsername"
+              )
+              .value
+          );
+
+
+        const email =
+          normalizeEmail(
+            document
+              .getElementById(
+                "registerEmail"
+              )
+              .value
+          );
+
+
+        const password =
+          document
+            .getElementById(
+              "registerPassword"
+            )
+            .value;
+
+
+        const password2 =
+          document
+            .getElementById(
+              "registerPassword2"
+            )
+            .value;
+
+
+        if (
+          name.length <
+          2
+        ) {
+
+          showMessage(
+            "Tên hiển thị phải có ít nhất 2 ký tự."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          username.length <
+          3
+        ) {
+
+          showMessage(
+            "Username phải có ít nhất 3 ký tự."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          !/^[a-z0-9._-]+$/i.test(
+            username
+          )
+        ) {
+
+          showMessage(
+            "Username chỉ nên chứa chữ, số, dấu chấm, gạch dưới hoặc gạch ngang."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          password.length <
+          6
+        ) {
+
+          showMessage(
+            "Mật khẩu phải có ít nhất 6 ký tự."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          password !==
+          password2
+        ) {
+
+          showMessage(
+            "Hai mật khẩu không giống nhau."
+          );
+
+          return;
+
+        }
+
+
+        const users =
+          getUsers();
+
+
+        if (
+          users.some(
+            user =>
+              normalizeUsername(
+                user.username
+              ) === username
+          )
+        ) {
+
+          showMessage(
+            "Username này đã tồn tại."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          users.some(
+            user =>
+              normalizeEmail(
+                user.email
+              ) === email
+          )
+        ) {
+
+          showMessage(
+            "Email này đã được sử dụng."
+          );
+
+          return;
+
+        }
+
+
+        const newUser = {
+
+          id:
+            "user_" +
+            Date.now() +
+            "_" +
+            Math.random()
+              .toString(36)
+              .slice(2,8),
+
+          name:
+            name,
+
+          username:
+            username,
+
+          email:
+            email,
+
+          password:
+            password,
+
+          createdAt:
+            Date.now(),
+
+          lastLogin:
+            null,
+
+          projects: [],
+
+          settings: {
+
+            theme:
+              "dark",
+
+            language:
+              "vi",
+
+            autosave:
+              true
+
+          }
+
+        };
+
+
+        users.push(
+          newUser
+        );
+
+        saveUsers(
+          users
+        );
+
+
+        saveSession({
+
+          userId:
+            newUser.id,
+
+          loginAt:
+            Date.now()
+
+        });
+
+
+        updateUserUI(
+          newUser
+        );
+
+
+        hideAuthScreen();
+
+
+        console.log(
+          "[Math 3D Plotter] Account created:",
+          username
+        );
+
+      }
+    );
+
+
+    /* ======================================================= */
+    /* LOGIN */
+    /* ======================================================= */
+
+    loginForm.addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+        clearMessage();
+
+
+        const identifier =
+          String(
+            document
+              .getElementById(
+                "loginUsername"
+              )
+              .value
+          )
+            .trim()
+            .toLowerCase();
+
+
+        const password =
+          document
+            .getElementById(
+              "loginPassword"
+            )
+            .value;
+
+
+        const users =
+          getUsers();
+
+
+        const user =
+          users.find(
+            item =>
+
+              normalizeUsername(
+                item.username
+              ) === identifier ||
+
+              normalizeEmail(
+                item.email
+              ) === identifier
+
+          );
+
+
+        if (!user) {
+
+          showMessage(
+            "Không tìm thấy tài khoản."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          user.password !==
+          password
+        ) {
+
+          showMessage(
+            "Mật khẩu không chính xác."
+          );
+
+          return;
+
+        }
+
+
+        user.lastLogin =
+          Date.now();
+
+
+        saveUsers(
+          users
+        );
+
+
+        saveSession({
+
+          userId:
+            user.id,
+
+          loginAt:
+            Date.now()
+
+        });
+
+
+        updateUserUI(
+          user
+        );
+
+
+        hideAuthScreen();
+
+
+        console.log(
+          "[Math 3D Plotter] Login:",
+          user.username
+        );
+
+      }
+    );
+
+
+    /* ======================================================= */
+    /* GUEST */
+    /* ======================================================= */
+
+    guestButton.addEventListener(
+      "click",
+      () => {
+
+        const guest = {
+
+          id:
+            "guest",
+
+          name:
+            "Guest",
+
+          username:
+            "guest",
+
+          email:
+            "Guest Mode",
+
+          guest:
+            true
+
+        };
+
+
+        saveSession({
+
+          userId:
+            "guest",
+
+          guest:
+            true,
+
+          loginAt:
+            Date.now()
+
+        });
+
+
+        updateUserUI(
+          guest
+        );
+
+
+        hideAuthScreen();
+
+      }
+    );
+
+
+    /* ======================================================= */
+    /* UPDATE UI */
+    /* ======================================================= */
+
+    function updateUserUI(
+      user
+    ) {
+
+      if (!user) {
+        return;
+      }
+
+
+      accountName.textContent =
+        escapeText(
+          user.name
+        );
+
+
+      accountAvatar.textContent =
+        getInitial(
+          user.name
+        );
+
+
+      menuUserName.textContent =
+        escapeText(
+          user.name
+        );
+
+
+      menuUserEmail.textContent =
+        escapeText(
+          user.email
+        );
+
+
+      accountButton.classList.add(
+        "visible"
+      );
+
+
+      updateProfile(
+        user
+      );
+
+    }
+
+
+    /* ======================================================= */
+    /* PROFILE */
+    /* ======================================================= */
+
+    function updateProfile(
+      user
+    ) {
+
+      const profileName =
+        document.getElementById(
+          "profileName"
+        );
+
+      const profileUsername =
+        document.getElementById(
+          "profileUsername"
+        );
+
+      const profileEmail =
+        document.getElementById(
+          "profileEmail"
+        );
+
+      const profileCreated =
+        document.getElementById(
+          "profileCreated"
+        );
+
+      const profileLastLogin =
+        document.getElementById(
+          "profileLastLogin"
+        );
+
+
+      if (!user) {
+        return;
+      }
+
+
+      profileName.textContent =
+        user.name || "Guest";
+
+
+      profileUsername.textContent =
+        user.username
+          ? "@" + user.username
+          : "@guest";
+
+
+      profileEmail.textContent =
+        user.email || "Guest Mode";
+
+
+      profileCreated.textContent =
+        user.createdAt
+          ? new Date(
+              user.createdAt
+            ).toLocaleString(
+              "vi-VN"
+            )
+          : "Guest";
+
+
+      profileLastLogin.textContent =
+        user.lastLogin
+          ? new Date(
+              user.lastLogin
+            ).toLocaleString(
+              "vi-VN"
+            )
+          : "Phiên hiện tại";
+
+    }
+
+
+    /* ======================================================= */
+    /* CURRENT USER */
+    /* ======================================================= */
+
+    function getCurrentUser() {
+
+      const session =
+        getSession();
+
+
+      if (!session) {
+        return null;
+      }
+
+
+      if (
+        session.guest
+      ) {
+
+        return {
+
+          id:
+            "guest",
+
+          name:
+            "Guest",
+
+          username:
+            "guest",
+
+          email:
+            "Guest Mode",
+
+          guest:
+            true
+
+        };
+
+      }
+
+
+      const users =
+        getUsers();
+
+
+      return (
+        users.find(
+          user =>
+            user.id ===
+            session.userId
+        ) ||
+        null
+      );
+
+    }
+
+
+    /* ======================================================= */
+    /* AUTH SCREEN */
+    /* ======================================================= */
+
+    function showAuthScreen() {
+
+      if (!authScreen) {
+        return;
+      }
+
+      authScreen.classList.add(
+        "visible"
+      );
+
+      document.body.style.overflow =
+        "hidden";
+
+    }
+
+
+    function hideAuthScreen() {
+
+      if (!authScreen) {
+        return;
+      }
+
+      authScreen.classList.remove(
+        "visible"
+      );
+
+      document.body.style.overflow =
+        "hidden";
+
+    }
+
+
+    /* ======================================================= */
+    /* ACCOUNT MENU */
+    /* ======================================================= */
+
+    accountButton.addEventListener(
+      "click",
+      event => {
+
+        event.stopPropagation();
+
+        accountMenu.classList.toggle(
+          "open"
+        );
+
+      }
+    );
+
+
+    document.addEventListener(
+      "click",
+      event => {
+
+        if (
+          !accountMenu.contains(
+            event.target
+          ) &&
+          !accountButton.contains(
+            event.target
+          )
+        ) {
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+        }
+
+      }
+    );
+
+
+    /* ======================================================= */
+    /* PROFILE */
+    /* ======================================================= */
+
+    document
+      .getElementById(
+        "profileButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          const user =
+            getCurrentUser();
+
+          if (user) {
+
+            updateProfile(
+              user
+            );
+
+          }
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+          openModal(
+            "profileModal"
+          );
+
+        }
+      );
+
+
+    /* ======================================================= */
+    /* PROJECTS */
+    /* ======================================================= */
+
+    document
+      .getElementById(
+        "projectsButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+          alert(
+            "My Math Projects sẽ được kết nối với hệ thống lưu project của Math 3D Plotter."
+          );
+
+        }
+      );
+
+
+    /* ======================================================= */
+    /* SETTINGS */
+    /* ======================================================= */
+
+    document
+      .getElementById(
+        "settingsButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+          alert(
+            "Account Settings có thể mở rộng thêm Theme, Language, Auto Save, Camera Settings và các tùy chọn cá nhân."
+          );
+
+        }
+      );
+
+
+    /* ======================================================= */
+    /* PASSWORD MODAL */
+    /* ======================================================= */
+
+    document
+      .getElementById(
+        "passwordButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+          openModal(
+            "passwordModal"
+          );
+
+        }
+      );
+
+
+    const changePasswordForm =
+      document.getElementById(
+        "changePasswordForm"
+      );
+
+
+    changePasswordForm.addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+
+        const user =
+          getCurrentUser();
+
+
+        if (
+          !user ||
+          user.guest
+        ) {
+
+          showPasswordMessage(
+            "Guest không có mật khẩu để thay đổi.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        const oldPassword =
+          document
+            .getElementById(
+              "oldPassword"
+            )
+            .value;
+
+
+        const newPassword =
+          document
+            .getElementById(
+              "newPassword"
+            )
+            .value;
+
+
+        const newPassword2 =
+          document
+            .getElementById(
+              "newPassword2"
+            )
+            .value;
+
+
+        if (
+          user.password !==
+          oldPassword
+        ) {
+
+          showPasswordMessage(
+            "Mật khẩu hiện tại không chính xác.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        if (
+          newPassword.length <
+          6
+        ) {
+
+          showPasswordMessage(
+            "Mật khẩu mới phải có ít nhất 6 ký tự.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        if (
+          newPassword !==
+          newPassword2
+        ) {
+
+          showPasswordMessage(
+            "Mật khẩu mới không trùng khớp.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        const users =
+          getUsers();
+
+
+        const index =
+          users.findIndex(
+            item =>
+              item.id ===
+              user.id
+          );
+
+
+        if (
+          index === -1
+        ) {
+
+          return;
+
+        }
+
+
+        users[index].password =
+          newPassword;
+
+
+        saveUsers(
+          users
+        );
+
+
+        showPasswordMessage(
+          "Đã cập nhật mật khẩu.",
+          "success"
+        );
+
+
+        changePasswordForm.reset();
+
+      }
+    );
+
+
+    function showPasswordMessage(
+      message,
+      type
+    ) {
+
+      const box =
+        document.getElementById(
+          "passwordMessage"
+        );
+
+      box.textContent =
+        message;
+
+      box.className =
+        "auth-message " +
+        type;
+
+    }
+
+
+    /* ======================================================= */
+    /* LOGOUT */
+    /* ======================================================= */
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+          clearSession();
+
+
+          accountButton.classList.remove(
+            "visible"
+          );
+
+
+          showLogin();
+
+
+          showAuthScreen();
+
+
+          console.log(
+            "[Math 3D Plotter] Logged out."
+          );
+
+        }
+      );
+
+
+    /* ======================================================= */
+    /* MODALS */
+    /* ======================================================= */
+
+    function openModal(
+      id
+    ) {
+
+      const modal =
+        document.getElementById(
+          id
+        );
+
+      if (modal) {
+
+        modal.classList.add(
+          "open"
+        );
+
+      }
+
+    }
+
+
+    function closeModal(
+      id
+    ) {
+
+      const modal =
+        document.getElementById(
+          id
+        );
+
+      if (modal) {
+
+        modal.classList.remove(
+          "open"
+        );
+
+      }
+
+    }
+
+
+    document
+      .querySelectorAll(
+        "[data-close-modal]"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              closeModal(
+                button.dataset.closeModal
+              );
+
+            }
+          );
+
+        }
+      );
+
+
+    document
+      .querySelectorAll(
+        ".account-modal"
+      )
+      .forEach(
+        modal => {
+
+          modal.addEventListener(
+            "click",
+            event => {
+
+              if (
+                event.target ===
+                modal
+              ) {
+
+                modal.classList.remove(
+                  "open"
+                );
+
+              }
+
+            }
+          );
+
+        }
+      );
+
+
+    /* ======================================================= */
+    /* ESC */
+    /* ======================================================= */
+
+    document.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key ===
+          "Escape"
+        ) {
+
+          accountMenu.classList.remove(
+            "open"
+          );
+
+
+          document
+            .querySelectorAll(
+              ".account-modal.open"
+            )
+            .forEach(
+              modal =>
+                modal.classList.remove(
+                  "open"
+                )
+            );
+
+        }
+
+      }
+    );
+
+
+    /* ======================================================= */
+    /* RESTORE SESSION */
+    /* ======================================================= */
+
+    function restoreSession() {
+
+      const session =
+        getSession();
+
+
+      if (!session) {
+
+        return false;
+
+      }
+
+
+      const user =
+        getCurrentUser();
+
+
+      if (!user) {
+
+        clearSession();
+
+        return false;
+
+      }
+
+
+      updateUserUI(
+        user
+      );
+
+
+      return true;
+
+    }
+
+
+    /* ======================================================= */
+    /* PUBLIC API */
+    /* ======================================================= */
+
+    window.Math3DAccount = {
+
+      getCurrentUser,
+
+      getUsers,
+
+      logout() {
+
+        clearSession();
+
+        accountButton.classList.remove(
+          "visible"
+        );
+
+        showLogin();
+
+        showAuthScreen();
+
+      },
+
+      isLoggedIn() {
+
+        return !!getCurrentUser();
+
+      },
+
+      isGuest() {
+
+        const user =
+          getCurrentUser();
+
+        return !!(
+          user &&
+          user.guest
+        );
+
+      }
+
+    };
+
+
+    /* ======================================================= */
+    /* START ACCOUNT SYSTEM */
+    /* ======================================================= */
+
+    window.addEventListener(
+      "Math3DAppReady",
+      () => {
+
+        const restored =
+          restoreSession();
+
+
+        if (!restored) {
+
+          showAuthScreen();
+
+        }
+
+      }
+    );
+
+
+    /*
+     * Fallback:
+     *
+     * Nếu boot manager đã chạy trước khi
+     * Account Manager đăng ký event.
+     */
+
+    setTimeout(
+      () => {
+
+        const app =
+          document.getElementById(
+            "app"
+          );
+
+
+        if (
+          app &&
+          app.classList.contains(
+            "ready"
+          )
+        ) {
+
+          const restored =
+            restoreSession();
+
+
+          if (!restored) {
+
+            showAuthScreen();
+
+          }
+
+        }
+
+      },
+      2500
+    );
+
+
+  })();
+
+  </script>
+
+
+  <!-- ======================================================= -->
+  <!-- BOOT MANAGER -->
+  <!-- ======================================================= -->
+
+  <script>
+
+  (() => {
+
+    "use strict";
+
+
+    const loadingScreen =
+      document.getElementById(
+        "loadingScreen"
+      );
+
+    const progress =
+      document.getElementById(
+        "loadingProgress"
+      );
+
+    const status =
+      document.getElementById(
+        "loadingStatus"
+      );
+
+    const percent =
+      document.getElementById(
+        "loadingPercent"
+      );
+
+    const errorBox =
+      document.getElementById(
+        "loadingError"
+      );
+
+    const retry =
+      document.getElementById(
+        "loadingRetry"
+      );
+
+    const app =
+      document.getElementById(
+        "app"
+      );
+
+
+    let currentProgress = 0;
+
+    let finished = false;
+
+
+    /* ======================================================= */
+    /* PROGRESS */
+    /* ======================================================= */
+
+    function setProgress(
+      value,
+      message
+    ) {
+
+      currentProgress =
+        Math.max(
+          0,
+          Math.min(
+            100,
+            value
+          )
+        );
+
+
+      if (progress) {
+
+        progress.style.width =
+          currentProgress + "%";
+
+      }
+
+
+      if (percent) {
+
+        percent.textContent =
+          Math.round(
+            currentProgress
+          ) + "%";
+
+      }
+
+
+      if (
+        message &&
+        status
+      ) {
+
+        status.textContent =
+          message;
+
+      }
+
+    }
+
+
+    /* ======================================================= */
+    /* WAIT */
+    /* ======================================================= */
+
+    function wait(ms) {
+
+      return new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            ms
+          )
+      );
+
+    }
+
+
+    function nextFrame() {
+
+      return new Promise(
+        resolve =>
+          requestAnimationFrame(
+            () => resolve()
+          )
+      );
+
+    }
+
+
+    async function waitFrames(
+      count = 3
+    ) {
+
+      for (
+        let i = 0;
+        i < count;
+        i++
+      ) {
+
+        await nextFrame();
+
+      }
+
+    }
+
+
+    /* ======================================================= */
+    /* LIBRARIES */
+    /* ======================================================= */
+
+    function checkLibraries() {
+
+      const missing = [];
+
+
+      if (
+        typeof THREE ===
+        "undefined"
+      ) {
+
+        missing.push(
+          "Three.js"
+        );
+
+      }
+
+
+      if (
+        typeof THREE !==
+          "undefined" &&
+        typeof THREE.OrbitControls ===
+          "undefined"
+      ) {
+
+        console.warn(
+          "[Math 3D Plotter] THREE.OrbitControls chưa được phát hiện."
+        );
+
+      }
+
+
+      if (
+        typeof math ===
+        "undefined"
+      ) {
+
+        missing.push(
+          "Math.js"
+        );
+
+      }
+
+
+      if (
+        typeof Chart ===
+        "undefined"
+      ) {
+
+        missing.push(
+          "Chart.js"
+        );
+
+      }
+
+
+      if (
+        typeof dat ===
+          "undefined" ||
+        typeof dat.GUI ===
+          "undefined"
+      ) {
+
+        missing.push(
+          "dat.GUI"
+        );
+
+      }
+
+
+      if (
+        missing.length
+      ) {
+
+        throw new Error(
+          "Không tải được: " +
+          missing.join(", ")
+        );
+
+      }
+
+    }
+
+
+    /* ======================================================= */
+    /* THREE INTERACTION */
+    /* ======================================================= */
+
+    function fixThreeInteraction() {
+
+      if (app) {
+
+        app.style.pointerEvents =
+          "none";
+
+      }
+
+
+      document
+        .querySelectorAll(
+          "#app .badge"
+        )
+        .forEach(
+          element => {
+
+            element.style.pointerEvents =
+              "auto";
+
+          }
+        );
+
+
+      document
+        .querySelectorAll(
+          "canvas"
+        )
+        .forEach(
+          canvas => {
+
+            canvas.style.pointerEvents =
+              "auto";
+
+            canvas.style.touchAction =
+              "none";
+
+            canvas.style.userSelect =
+              "none";
+
+            canvas.style.webkitUserSelect =
+              "none";
+
+          }
+        );
+
+
+      document
+        .querySelectorAll(
+          "body > div"
+        )
+        .forEach(
+          element => {
+
+            const style =
+              window.getComputedStyle(
+                element
+              );
+
+
+            const rect =
+              element.getBoundingClientRect();
+
+
+            const coversViewport =
+              rect.width >=
+                window.innerWidth * .95 &&
+              rect.height >=
+                window.innerHeight * .95;
+
+
+            const positioned =
+              style.position ===
+                "absolute" ||
+              style.position ===
+                "fixed";
+
+
+            /*
+             * Không động vào account UI.
+             */
+
+            if (
+              element.id ===
+              "authScreen"
+            ) {
+
+              return;
+
+            }
+
+
+            if (
+              element.id ===
+              "accountMenu"
+            ) {
+
+              return;
+
+            }
+
+
+            if (
+              coversViewport &&
+              positioned &&
+              !element.classList.contains(
+                "dg"
+              )
+            ) {
+
+              if (
+                !element.closest(
+                  ".dg"
+                )
+              ) {
+
+                element.style.pointerEvents =
+                  "none";
+
+              }
+
+            }
+
+          }
+        );
+
+
+      const possibleLabels = [
+
+        window.labelRenderer,
+
+        window.css2dRenderer,
+
+        window.css2DRenderer,
+
+        window.CSS2DRendererInstance
+
+      ];
+
+
+      possibleLabels.forEach(
+        renderer => {
+
+          if (
+            renderer &&
+            renderer.domElement
+          ) {
+
+            renderer.domElement.style.pointerEvents =
+              "none";
+
+          }
+
+        }
+      );
+
+
+      const possibleControls = [
+
+        window.controls,
+
+        window.orbitControls,
+
+        window.OrbitControlsInstance
+
+      ];
+
+
+      possibleControls.forEach(
+        controls => {
+
+          if (!controls) {
+            return;
+          }
+
+
+          if (
+            controls.domElement
+          ) {
+
+            controls.domElement.style.touchAction =
+              "none";
+
+            controls.domElement.style.pointerEvents =
+              "auto";
+
+          }
+
+        }
+      );
+
+
+      document.body.style.pointerEvents =
+        "auto";
+
+    }
+
+
+    /* ======================================================= */
+    /* VERIFY */
+    /* ======================================================= */
+
+    function verifyOrbitControls() {
+
+      if (
+        typeof THREE ===
+        "undefined"
+      ) {
+
+        return false;
+
+      }
+
+
+      const canvas =
+        document.querySelector(
+          "canvas"
+        );
+
+
+      if (!canvas) {
+
+        return false;
+
+      }
+
+
+      if (
+        typeof THREE.OrbitControls ===
+        "function"
+      ) {
+
+        return true;
+
+      }
+
+
+      if (
+        window.controls ||
+        window.orbitControls
+      ) {
+
+        return true;
+
+      }
+
+
+      return false;
+
+    }
+
+
+    /* ======================================================= */
+    /* WAIT APPLICATION */
+    /* ======================================================= */
+
+    async function waitForApplication() {
+
+      const start =
+        performance.now();
+
+      const timeout =
+        10000;
+
+
+      let foundCanvas =
+        false;
+
+
+      while (
+        performance.now() -
+        start <
+        timeout
+      ) {
+
+        const canvas =
+          document.querySelector(
+            "canvas"
+          );
+
+
+        const gui =
+          document.querySelector(
+            ".dg"
+          );
+
+
+        if (canvas) {
+
+          foundCanvas =
+            true;
+
+        }
+
+
+        if (
+          canvas ||
+          gui
+        ) {
+
+          await waitFrames(5);
+
+          await wait(250);
+
+          fixThreeInteraction();
+
+          return;
+
+        }
+
+
+        await wait(100);
+
+      }
+
+
+      if (!foundCanvas) {
+
+        console.warn(
+          "[Math 3D Plotter] Không tìm thấy canvas sau thời gian chờ."
+        );
+
+      }
+
+
+      await waitFrames(3);
+
+      fixThreeInteraction();
+
+    }
+
+
+    /* ======================================================= */
+    /* REMOVE LOADING */
+    /* ======================================================= */
+
+    function removeLoadingScreen() {
+
+      if (!loadingScreen) {
+        return;
+      }
+
+
+      loadingScreen.classList.add(
+        "hidden"
+      );
+
+
+      loadingScreen.style.pointerEvents =
+        "none";
+
+
+      setTimeout(
+        () => {
+
+          if (
+            loadingScreen &&
+            loadingScreen.parentNode
+          ) {
+
+            loadingScreen.parentNode.removeChild(
+              loadingScreen
+            );
+
+          }
+
+        },
+        1000
+      );
+
+    }
+
+
+    /* ======================================================= */
+    /* ENTER */
+    /* ======================================================= */
+
+    async function enterApplication() {
+
+      if (finished) {
+        return;
+      }
+
+
+      finished = true;
+
+
+      setProgress(
+        94,
+        "Preparing interface..."
+      );
+
+
+      await wait(150);
+
+
+      fixThreeInteraction();
+
+
+      setProgress(
+        97,
+        "Finalizing 3D workspace..."
+      );
+
+
+      await wait(250);
+
+
+      setProgress(
+        100,
+        "Application ready"
+      );
+
+
+      await wait(350);
+
+
+      if (app) {
+
+        app.classList.add(
+          "ready"
+        );
+
+        app.style.pointerEvents =
+          "none";
+
+      }
+
+
+      removeLoadingScreen();
+
+
+      await waitFrames(2);
+
+      fixThreeInteraction();
+
+
+      /*
+       * Báo cho Account Manager rằng
+       * Math 3D đã sẵn sàng.
+       */
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "Math3DAppReady"
+        )
+      );
+
+    }
+
+
+    /* ======================================================= */
+    /* ERROR */
+    /* ======================================================= */
+
+    function showError(
+      error
+    ) {
+
+      console.error(
+        "[Math 3D Plotter]",
+        error
+      );
+
+
+      if (status) {
+
+        status.textContent =
+          "Application failed to start";
+
+        status.classList.add(
+          "error"
+        );
+
+      }
+
+
+      if (errorBox) {
+
+        errorBox.style.display =
+          "block";
+
+
+        errorBox.innerHTML =
+
+          "<strong>Không thể khởi động Math 3D Plotter.</strong><br><br>" +
+
+          (
+            error &&
+            error.message
+              ? error.message
+              : String(error)
+          ) +
+
+          "<br><br>" +
+
+          "Các module gốc vẫn được giữ nguyên. " +
+
+          "Hãy kiểm tra Console của trình duyệt.";
+
+      }
+
+
+      if (retry) {
+
+        retry.style.display =
+          "inline-block";
+
+      }
+
+    }
+
+
+    /* ======================================================= */
+    /* RETRY */
+    /* ======================================================= */
+
+    if (retry) {
+
+      retry.addEventListener(
+        "click",
+        () => {
+
+          window.location.reload();
+
+        }
+      );
+
+    }
+
+
+    /* ======================================================= */
+    /* ERRORS */
+    /* ======================================================= */
+
+    window.addEventListener(
+      "error",
+      event => {
+
+        if (
+          event &&
+          event.error
+        ) {
+
+          console.error(
+            "[Math 3D Plotter runtime error]",
+            event.error
+          );
+
+        }
+
+      }
+    );
+
+
+    window.addEventListener(
+      "unhandledrejection",
+      event => {
+
+        console.error(
+          "[Math 3D Plotter unhandled rejection]",
+          event.reason
+        );
+
+      }
+    );
+
+
+    /* ======================================================= */
+    /* BOOT */
+    /* ======================================================= */
+
+    async function boot() {
+
+      try {
+
+        setProgress(
+          5,
+          "Initializing interface..."
+        );
+
+
+        await wait(200);
+
+
+        setProgress(
+          20,
+          "Loading 3D libraries..."
+        );
+
+
+        await wait(180);
+
+
+        setProgress(
+          35,
+          "Loading mathematical engine..."
+        );
+
+
+        await wait(180);
+
+
+        setProgress(
+          50,
+          "Loading visualization modules..."
+        );
+
+
+        await wait(180);
+
+
+        checkLibraries();
+
+
+        setProgress(
+          57,
+          "All libraries loaded"
+        );
+
+
+        await wait(150);
+
+
+        setProgress(
+          67,
+          "Loading GuiHelper.js..."
+        );
+
+
+        await wait(150);
+
+
+        if (
+          typeof GuiHelperTabs !==
+          "undefined"
+        ) {
+
+          setProgress(
+            72,
+            "GuiHelper.js ready"
+          );
+
+        }
+        else {
+
+          throw new Error(
+            "GuiHelperTabs không tồn tại. Kiểm tra GuiHelper.js."
+          );
+
+        }
+
+
+        setProgress(
+          78,
+          "Starting Math 3D Plotter..."
+        );
+
+
+        await wait(250);
+
+
+        setProgress(
+          84,
+          "Initializing 3D workspace..."
+        );
+
+
+        await waitForApplication();
+
+
+        setProgress(
+          90,
+          "Connecting 3D controls..."
+        );
+
+
+        fixThreeInteraction();
+
+
+        const orbitReady =
+          verifyOrbitControls();
+
+
+        if (orbitReady) {
+
+          console.log(
+            "[Math 3D Plotter] OrbitControls ready."
+          );
+
+        }
+        else {
+
+          console.warn(
+            "[Math 3D Plotter] OrbitControls constructor/instance chưa được phát hiện."
+          );
+
+        }
+
+
+        await enterApplication();
+
+      }
+      catch (error) {
+
+        showError(
+          error
+        );
+
+      }
+
+    }
+
+
+    /* ======================================================= */
+    /* START */
+    /* ======================================================= */
+
+    window.addEventListener(
+      "load",
+      () => {
+
+        boot();
+
+      },
+      {
+        once: true
+      }
+    );
+
+  })();
+
+  </script>
+
+
+</body>
+
+</html>
